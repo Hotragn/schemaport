@@ -1,0 +1,11 @@
+# Normalise to LF in the repository regardless of a contributor's platform or
+# core.autocrlf setting. The CI workflows run bash from inside YAML, and CRLF
+# there breaks the shell in ways that are tedious to diagnose.
+* text=auto eol=lf
+
+# Never touch these: the checker's output is byte-compared in tests, and the
+# contract dataset is read verbatim.
+*.json text eol=lf
+*.png binary
+*.whl binary
+*.gz binary
