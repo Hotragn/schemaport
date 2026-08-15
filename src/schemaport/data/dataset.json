@@ -1,0 +1,15 @@
+{
+  "dataset_version": "0.1.0",
+  "recorded_at": "2026-08-15",
+  "description": "Contract dataset for Schemaport 0.1.0. Covers the Anthropic Messages API and the OpenAI Responses and Chat Completions APIs: tool-definition contracts, the strict schema subsets and their limits, and prompt-cache prefix shape.",
+  "evidence_position": "Every record is transcribed from the provider's own published documentation and cites the page and section it came from, at confidence 'documented', or is a heuristic built on a documented mechanism and marked 'experimental' with the inference stated. There are no records at confidence 'observed': that level requires a reproducible probe against a live endpoint, and this release ships none. See docs/contract-data.md for what each level licenses.",
+  "rule_sets": ["anthropic-messages", "openai-structured-outputs"],
+  "profiles": [
+    "anthropic-messages-512-token-cache",
+    "anthropic-messages-1024-token-cache",
+    "anthropic-messages-2048-token-cache",
+    "anthropic-messages-4096-token-cache",
+    "openai-responses",
+    "openai-chat-completions"
+  ]
+}

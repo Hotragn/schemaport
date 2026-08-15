@@ -1,0 +1,34 @@
+{
+  "model": "claude-sonnet-5",
+  "max_tokens": 2048,
+  "tools": [
+    {
+      "name": "search orders",
+      "description": "Look up orders for a customer.",
+      "strict": true,
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["open", "closed"] },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        },
+        "required": ["customer_id", "status", "limit"]
+      }
+    }
+  ],
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a support agent for an online retailer. Session 3f2b8c14-59a7-4d61-9f0e-72c5ab3d8e10 started at 2026-08-15T09:14:02Z. Work through the customer's problem one step at a time, and use the search tool before making any claim about an order's status.",
+      "cache_control": { "type": "ephemeral" }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": "My order still has not shipped."
+    }
+  ]
+}

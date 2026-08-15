@@ -1,0 +1,257 @@
+{
+  "rule_set_id": "openai-structured-outputs",
+  "summary": "The strict Structured Outputs schema subset and limits, plus automatic prefix-cache shape. Shared by the Chat Completions and Responses profiles, which differ only in where the schema sits in the request.",
+  "rules": [
+    {
+      "rule_id": "structured-output.strict-not-enabled",
+      "check": "structured_output.strict_not_enabled",
+      "severity": "info",
+      "confidence": "documented",
+      "params": {},
+      "message": "The request supplies a json_schema format without opting into strict mode.",
+      "remediation": "Set \"strict\": true alongside the schema, then make the schema satisfy the strict subset. Without it the schema is a hint rather than an enforced contract.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide: schema adherence is guaranteed only when strict is enabled on the json_schema format. https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.root-not-object",
+      "check": "structured_output.root_type",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format"],
+      "requires_strict": true,
+      "params": { "expected_type": "object" },
+      "message": "The root of a strict json_schema must declare type \"object\".",
+      "remediation": "Wrap the current schema in an object: set \"type\": \"object\" at the root and move the existing schema under a named property, for example \"items\" or \"result\".",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"root level object of a schema must be an object, and not use anyOf\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.root-uses-anyof",
+      "check": "structured_output.root_forbidden_keywords",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format"],
+      "requires_strict": true,
+      "params": { "keywords": ["anyOf"] },
+      "message": "A strict json_schema may not use anyOf at its root.",
+      "remediation": "Move the anyOf one level down: make the root an object with a single property whose schema carries the anyOf.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"root level object of a schema must be an object, and not use anyOf\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.additional-properties-not-false",
+      "check": "structured_output.additional_properties",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": { "expected": false },
+      "message": "Every object in a strict schema must set \"additionalProperties\": false.",
+      "remediation": "Add \"additionalProperties\": false to the object schema at this path. Strict mode requires it on every object, not only the root.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"additionalProperties: false must always be set in objects\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.property-not-required",
+      "check": "structured_output.required_completeness",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": {},
+      "message": "Every property declared on an object in a strict schema must appear in that object's \"required\" array.",
+      "remediation": "Add the missing property names to this object's \"required\" array. For a field that is genuinely optional, keep it required and widen its type to a union that includes \"null\" rather than leaving it out.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"All fields or function parameters must be specified as required\"; optional fields are expressed as a union with null. https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.unsupported-keyword",
+      "check": "structured_output.unsupported_keywords",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": {
+        "keywords": [
+          "allOf",
+          "not",
+          "dependentRequired",
+          "dependentSchemas",
+          "if",
+          "then",
+          "else"
+        ]
+      },
+      "message": "This composition keyword is outside the JSON Schema subset accepted under strict mode.",
+      "remediation": "Remove the keyword. Use \"anyOf\" in place of \"allOf\", merge the combined constraints into a single schema, and replace conditional keywords with an \"anyOf\" over the concrete shapes you accept.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: the unsupported composition keywords are \"allOf, not, dependentRequired, dependentSchemas, if, then, else\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.schema-depth",
+      "check": "structured_output.max_depth",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": { "limit": 10 },
+      "message": "A strict schema may nest up to 10 levels deep.",
+      "remediation": "Flatten the schema. Lift the deepest objects into \"$defs\" and reference them, or split the response into two calls so each schema stays inside the limit.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: schemas may have \"up to 10 levels of nesting\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.total-object-properties",
+      "check": "structured_output.total_object_properties",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": { "limit": 5000 },
+      "message": "A strict schema may declare up to 5000 object properties in total.",
+      "remediation": "Reduce the number of properties across the whole schema. This is a total, not a per-object cap, so splitting one large object into several does not help — drop fields the model does not need to produce, or split the work across calls.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: a schema may have \"up to 5000 object properties total\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.total-enum-values",
+      "check": "structured_output.total_enum_values",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": { "limit": 1000 },
+      "message": "A strict schema may declare up to 1000 enum values across all enum properties.",
+      "remediation": "Move the large value set out of the schema: accept a plain string and validate it against your list after the response is parsed, or narrow the enum to the values this call can actually return.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: a schema may have \"up to 1000 enum values across all enum properties\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.total-string-length",
+      "check": "structured_output.total_string_length",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": { "limit_chars": 120000 },
+      "message": "The combined length of property names, definition names, enum values, and const values in a strict schema may not exceed 120,000 characters.",
+      "remediation": "Shorten identifiers and move long literal value sets out of the schema. Schemas assembled from live data are the usual cause — validate those values in your application instead of encoding them as enums.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"total string length of all property names, definition names, enum values, and const values cannot exceed 120,000 characters\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.large-enum-string-length",
+      "check": "structured_output.large_enum_string_length",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": { "value_threshold": 250, "limit_chars": 15000 },
+      "message": "A single enum property with more than 250 values is limited to 15,000 characters across those values.",
+      "remediation": "Split the enum across several properties, shorten the values to codes your application expands after parsing, or drop the enum and validate the value yourself.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: for a single enum property with more than 250 values, \"total string length of all enum values cannot exceed 15,000 characters\". https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "structured-output.fine-tuned-model-keyword",
+      "check": "structured_output.unsupported_keywords",
+      "severity": "info",
+      "confidence": "documented",
+      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "requires_strict": true,
+      "params": {
+        "keywords": [
+          "minLength",
+          "maxLength",
+          "pattern",
+          "format",
+          "minimum",
+          "maximum",
+          "multipleOf",
+          "patternProperties",
+          "minItems",
+          "maxItems"
+        ]
+      },
+      "message": "This keyword is accepted on the models this profile covers, but is documented as unsupported when the same schema is sent to a fine-tuned model.",
+      "remediation": "Nothing to change if you only route to the models named in this profile. If the same rendered request can be routed to a fine-tuned model, drop the keyword and validate the constraint in your application after parsing.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: these keywords are supported in general, but the guide lists them as additionally excluded for fine-tuned models. Reported at info severity because it is a routing hazard rather than a defect for the models this profile names. https://developers.openai.com/api/docs/guides/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "cache.volatile-prefix-content",
+      "check": "cache.volatile_prefix",
+      "severity": "warning",
+      "confidence": "experimental",
+      "params": {
+        "prefix_scan_chars": 4096,
+        "patterns": [
+          {
+            "name": "an ISO 8601 timestamp",
+            "regex": "\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}(:\\d{2})?"
+          },
+          {
+            "name": "a UUID",
+            "regex": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+          },
+          {
+            "name": "a millisecond epoch timestamp",
+            "regex": "\\b1[6-9]\\d{11}\\b"
+          },
+          {
+            "name": "a clock time",
+            "regex": "\\b\\d{1,2}:\\d{2}:\\d{2}\\b"
+          },
+          {
+            "name": "a calendar date",
+            "regex": "\\b\\d{4}-\\d{2}-\\d{2}\\b"
+          }
+        ]
+      },
+      "message": "Content that typically changes between turns appears near the front of the request, where prefix caching would otherwise match.",
+      "remediation": "Move the volatile value later in the prompt, after the tool definitions and instructions you want reused. Caching on this surface matches a leading span of the request, so anything that changes early truncates what can be reused.",
+      "provenance": {
+        "source_kind": "inference",
+        "reference": "Heuristic built on a documented mechanism. The provider documents that prompt caching works automatically by matching exact prompt prefixes and that a change before the breakpoint prevents a cache hit. Two things are inferred: which values are volatile (the patterns are a guess), and where to stop scanning — caching here is automatic, so there is no marker in the request to read and the scan window is an estimate of the leading span rather than a published boundary. Makes no claim about whether any given request reused a cached prefix. https://developers.openai.com/api/docs/guides/prompt-caching",
+        "evidence_date": "2026-08-15"
+      }
+    }
+  ]
+}

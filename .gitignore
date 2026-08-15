@@ -1,0 +1,35 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Virtual environments
+.venv/
+venv/
+.venv-*/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local secrets and scratch. Nothing in this project needs a credential, and
+# none should ever end up in the tree.
+.env
+.env.*
+*.pem
+*.key
+scratch/

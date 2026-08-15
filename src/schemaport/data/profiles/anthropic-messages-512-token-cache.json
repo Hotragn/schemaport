@@ -1,0 +1,48 @@
+{
+  "profile_id": "anthropic/messages-512-token-cache",
+  "provider": "anthropic",
+  "request_shape": "anthropic.messages",
+  "api_surface": "Messages API",
+  "models": [
+    "claude-opus-5",
+    "claude-fable-5",
+    "claude-mythos-5"
+  ],
+  "model_scope": {
+    "basis": "provider_documentation",
+    "reference": "Anthropic \"Prompt caching\", cache limitations, which enumerates the minimum cacheable prompt length per model by name; these are the models listed at this profile's tier. Model identifiers taken from Anthropic \"Models overview\", Claude API ID column. https://platform.claude.com/docs/en/build-with-claude/prompt-caching and https://platform.claude.com/docs/en/about-claude/models/overview",
+    "evidence_date": "2026-08-15",
+    "verified": [
+      "claude-opus-5",
+      "claude-fable-5",
+      "claude-mythos-5"
+    ]
+  },
+  "extends": [
+    "anthropic-messages"
+  ],
+  "summary": "Messages API contract for the models with a documented 512-token minimum cacheable prompt length: Claude Opus 5, Claude Fable 5, and Claude Mythos 5.",
+  "coverage": "Applies to the model identifiers named, on the Messages API. The tool and strict-tool-use rules are shared across every Anthropic profile in this dataset; the cache threshold is not, which is the reason these models are grouped separately rather than merged into one profile. Makes no claim about models it does not name.",
+  "overrides": {
+    "cache.prefix-below-minimum": {
+      "params": {
+        "min_prefix_chars": 2048
+      },
+      "provenance": {
+        "source_kind": "inference",
+        "reference": "Anthropic \"Prompt caching\", cache limitations: the minimum cacheable prompt length is 512 tokens for Claude Opus 5, Claude Fable 5, and Claude Mythos 5. https://platform.claude.com/docs/en/build-with-claude/prompt-caching This check counts characters rather than tokenizing, so the token figure is carried as a character proxy of 2048 at roughly four characters per token — an estimate that will misjudge content tokenizing unusually. Not a provider-published character figure.",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    "cache.no-breakpoint": {
+      "params": {
+        "min_prefix_chars": 2048
+      },
+      "provenance": {
+        "source_kind": "inference",
+        "reference": "Heuristic. Caching on this surface is opt-in per request through cache_control, so a large stable prefix with no marker is never cached. Whether the prefix is actually stable across turns cannot be determined from a single request, which is why this is informational. The threshold matches this profile's cacheability estimate: Anthropic \"Prompt caching\", cache limitations: the minimum cacheable prompt length is 512 tokens for Claude Opus 5, Claude Fable 5, and Claude Mythos 5. https://platform.claude.com/docs/en/build-with-claude/prompt-caching This check counts characters rather than tokenizing, so the token figure is carried as a character proxy of 2048 at roughly four characters per token — an estimate that will misjudge content tokenizing unusually. Not a provider-published character figure.",
+        "evidence_date": "2026-08-15"
+      }
+    }
+  }
+}

@@ -1,0 +1,91 @@
+name: Contract drift
+
+# The dataset is offline by design, which means a record can go stale without
+# anything noticing. This is the counterweight: re-fetch every pinned artifact
+# on a schedule and open an issue when a claim no longer holds.
+#
+# It is the only workflow that reaches the network for contract data, and it
+# runs nothing from the installed package's check path.
+
+on:
+  schedule:
+    # Weekly. Provider specs do not move hourly, and a noisy check gets ignored.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Re-check pinned artifact citations
+        id: verify
+        run: |
+          set +e
+          python tools/verify_contract_data.py | tee verify.log
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Open an issue if a claim no longer holds
+        if: steps.verify.outputs.status != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('verify.log', 'utf8');
+            const status = '${{ steps.verify.outputs.status }}';
+            const kind = status === '1' ? 'drift' : 'unverified pins';
+            const title = `Contract data: ${kind} detected`;
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'contract-data',
+            });
+            const already = existing.data.find(issue => issue.title === title);
+
+            const body = [
+              `The scheduled artifact check exited ${status}.`,
+              '',
+              'Exit 1 means a string a record depends on has disappeared from the',
+              'tracked ref — the provider changed something. Exit 2 means a pinned',
+              'revision could not be verified at all.',
+              '',
+              'Re-read the source before editing: a vanished string can mean the claim',
+              'changed, or only that the document was reorganised. Correct the record and',
+              'bump `dataset_version`; do not repin without reading.',
+              '',
+              '```',
+              log.trim(),
+              '```',
+            ].join('\n');
+
+            if (already) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: already.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['contract-data'],
+              });
+            }
+
+      - name: Fail the run so the schedule surfaces it
+        if: steps.verify.outputs.status != '0'
+        run: exit 1

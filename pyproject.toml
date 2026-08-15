@@ -1,0 +1,99 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "schemaport"
+version = "0.1.0"
+description = "Static request conformance for the agent-provider boundary: offline preflight checks for rendered LLM requests."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Hotragn" }]
+maintainers = [{ name = "Hotragn" }]
+keywords = [
+    "llm",
+    "agents",
+    "json-schema",
+    "structured-output",
+    "prompt-caching",
+    "static-analysis",
+    "preflight",
+    "sarif",
+    "ci",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+# No runtime dependencies. Schemaport does not depend on a provider SDK, and it
+# never asks for credentials or reaches the network.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Hotragn/schemaport"
+Source = "https://github.com/Hotragn/schemaport"
+Issues = "https://github.com/Hotragn/schemaport/issues"
+Documentation = "https://github.com/Hotragn/schemaport/blob/main/README.md"
+Changelog = "https://github.com/Hotragn/schemaport/blob/main/CHANGELOG.md"
+Security = "https://github.com/Hotragn/schemaport/blob/main/SECURITY.md"
+
+[project.scripts]
+schemaport = "schemaport.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/schemaport"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/docs",
+    "/examples",
+    "/README.md",
+    "/LICENSE",
+    "/NOTICE",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
+    "/CODE_OF_CONDUCT.md",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/schemaport"]
+strict = true
+warn_unreachable = true

@@ -1,0 +1,16 @@
+Schemaport
+Copyright 2026 The Schemaport authors
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License. You may obtain a copy of the
+License in the LICENSE file distributed with this work, or at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Schemaport has no runtime dependencies and redistributes no third-party code.
+
+The bundled contract dataset under src/schemaport/data/ describes constraints
+enforced by third-party services. It contains descriptions and citations
+written for this project, not material copied from provider documentation.
+Provider and model names appear only to identify the service a record applies
+to; no affiliation with or endorsement by any provider is claimed or implied.

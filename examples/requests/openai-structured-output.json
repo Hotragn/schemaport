@@ -1,0 +1,28 @@
+{
+  "model": "gpt-5.6-sol",
+  "instructions": "You extract structured order data from support tickets. Return only the fields defined by the schema.",
+  "input": [
+    {
+      "role": "user",
+      "content": "Ticket 4412: the customer says their order never arrived."
+    }
+  ],
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "name": "order_lookup",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "customer_id": { "type": "string" },
+          "status": {
+            "allOf": [{ "type": "string" }, { "enum": ["open", "closed"] }]
+          },
+          "note": { "type": "string" }
+        },
+        "required": ["customer_id"]
+      }
+    }
+  }
+}

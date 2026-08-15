@@ -1,0 +1,236 @@
+{
+  "rule_set_id": "anthropic-messages",
+  "summary": "Tool-definition contract, strict tool-use schema subset, and prompt-caching shape for the Anthropic Messages API. Profiles that extend this set supply their own models and override the cache threshold, which is the one value that is model-specific.",
+  "rules": [
+    {
+      "rule_id": "tool.name-invalid",
+      "check": "tool.name_pattern",
+      "severity": "error",
+      "confidence": "documented",
+      "params": { "pattern": "^[a-zA-Z0-9_-]{1,64}$", "max_length": 64 },
+      "message": "Tool names on this surface must match ^[a-zA-Z0-9_-]{1,64}$.",
+      "remediation": "Rename the tool to letters, digits, underscores, or hyphens, at most 64 characters — replace spaces and punctuation with underscores — and update every reference to the old name in the request.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Define tools\", client tool parameter table: the name field \"Must match the regex ^[a-zA-Z0-9_-]{1,64}$\". https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "tool.input-schema-root-not-object",
+      "check": "structured_output.root_type",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "params": { "expected_type": "object" },
+      "message": "A tool's input_schema must be a JSON Schema whose root declares type \"object\".",
+      "remediation": "Set \"type\": \"object\" at the root of this input_schema and move the existing schema under \"properties\", naming each parameter.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: the root type \"Must be object\". Applies to tool input_schema through strict tool use, which compiles input_schema with the same pipeline. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "strict-tool.additional-properties-not-false",
+      "check": "structured_output.additional_properties",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "requires_strict": true,
+      "params": { "expected": false },
+      "message": "Under strict tool use, every object in an input_schema must set \"additionalProperties\": false.",
+      "remediation": "Add \"additionalProperties\": false to the object schema at this path. It is required on every object in the schema, not only the root, and no other value is accepted.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: additionalProperties is supported and \"must be false for objects\"; a value other than false is listed as not supported. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "strict-tool.unsupported-keyword",
+      "check": "structured_output.unsupported_keywords",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "requires_strict": true,
+      "params": {
+        "keywords": [
+          "minimum",
+          "maximum",
+          "exclusiveMinimum",
+          "exclusiveMaximum",
+          "multipleOf",
+          "minLength",
+          "maxLength",
+          "maxItems",
+          "uniqueItems",
+          "patternProperties",
+          "unevaluatedProperties",
+          "propertyNames",
+          "unevaluatedItems",
+          "contains",
+          "minContains",
+          "maxContains",
+          "dependentRequired",
+          "dependentSchemas",
+          "if",
+          "then",
+          "else",
+          "not",
+          "oneOf"
+        ]
+      },
+      "message": "This keyword is outside the JSON Schema subset accepted under strict tool use on this surface.",
+      "remediation": "Remove the keyword. Numeric and string bounds have no equivalent here — enforce them in your application after the tool call is parsed. For a fixed value set use \"enum\"; in place of \"oneOf\" use \"anyOf\".",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations. Listed as not supported: numerical constraints (minimum, maximum, multipleOf), string constraints (minLength, maxLength), and array constraints beyond minItems. Keywords absent from the documented supported list are included here on the same basis; the page states an unsupported feature returns a 400 error. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "strict-tool.min-items-unsupported-value",
+      "check": "structured_output.keyword_allowed_values",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "requires_strict": true,
+      "params": { "keyword": "minItems", "allowed": [0, 1] },
+      "message": "Under strict tool use, minItems accepts only 0 or 1 on this surface.",
+      "remediation": "Set minItems to 0 or 1, or drop it and check the array length in your application after the tool call is parsed.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: array \"minItems (only values 0 and 1 supported)\", and array constraints beyond that are listed as not supported. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "strict-tool.enum-non-scalar-value",
+      "check": "structured_output.enum_value_types",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "requires_strict": true,
+      "params": { "allowed": ["string", "integer", "number", "boolean", "null"] },
+      "message": "Under strict tool use, enum values must be strings, numbers, booleans, or null.",
+      "remediation": "Replace the object or array entries with scalar values. Model the structure with a nested object schema and use the enum only for the scalar field that varies.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: enum supports \"strings, numbers, bools, nulls only—not complex types\", and \"complex types within enums\" are listed as not supported. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "strict-tool.external-ref",
+      "check": "structured_output.external_ref",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "requires_strict": true,
+      "params": {},
+      "message": "Under strict tool use, $ref must point inside the same schema document.",
+      "remediation": "Inline the referenced schema, or copy it into \"$defs\" in this document and point the $ref at \"#/$defs/<name>\".",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: $ref, $def, and definitions are supported but \"external $ref not supported\". https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "strict-tool.recursive-schema",
+      "check": "structured_output.recursive_schema",
+      "severity": "error",
+      "confidence": "documented",
+      "applies_to_kinds": ["tool_input_schema"],
+      "requires_strict": true,
+      "params": {},
+      "message": "Recursive schemas are not accepted under strict tool use on this surface.",
+      "remediation": "Flatten the recursion to a fixed depth — repeat the nested shape as many levels as the tool actually needs — or move the recursive part out of the schema and accept it as a string your application parses.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: \"Recursive schemas\" listed under not supported. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "cache.breakpoint-limit-exceeded",
+      "check": "cache.breakpoint_limit",
+      "severity": "error",
+      "confidence": "documented",
+      "params": { "limit": 4 },
+      "message": "The request defines more cache_control breakpoints than this surface accepts.",
+      "remediation": "Reduce the request to at most four cache_control markers. Keep the ones at the boundaries of content that genuinely stays stable across turns — normally the end of the tool definitions and the end of the system prompt.",
+      "provenance": {
+        "source_kind": "provider_documentation",
+        "reference": "Anthropic \"Prompt caching\": \"You can define up to 4 cache breakpoints\" per request. https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "cache.volatile-prefix-content",
+      "check": "cache.volatile_prefix",
+      "severity": "warning",
+      "confidence": "experimental",
+      "params": {
+        "patterns": [
+          {
+            "name": "an ISO 8601 timestamp",
+            "regex": "\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}(:\\d{2})?"
+          },
+          {
+            "name": "a UUID",
+            "regex": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+          },
+          {
+            "name": "a millisecond epoch timestamp",
+            "regex": "\\b1[6-9]\\d{11}\\b"
+          },
+          {
+            "name": "a clock time",
+            "regex": "\\b\\d{1,2}:\\d{2}:\\d{2}\\b"
+          },
+          {
+            "name": "a calendar date",
+            "regex": "\\b\\d{4}-\\d{2}-\\d{2}\\b"
+          }
+        ]
+      },
+      "message": "Content that typically changes between turns sits inside the span a cache breakpoint asks the provider to reuse.",
+      "remediation": "Move the volatile value out of the cached span: put it in a message after the last cache_control marker, or drop it if the model does not need it. Everything before a breakpoint has to match exactly, turn to turn, for the prefix to be reused.",
+      "provenance": {
+        "source_kind": "inference",
+        "reference": "Heuristic built on a documented mechanism. The provider documents exact prefix matching, and that \"A change before the breakpoint changes the prefix and will prevent a cache hit\", so a value that differs between turns inside the prefix cannot match. What is inferred is which values are volatile: the patterns are a guess, so a timestamp that is genuinely constant for the life of the prefix is a false positive, and volatile content these patterns do not describe is a false negative. Makes no claim about whether any given request did or did not reuse a cached prefix.",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "cache.prefix-below-minimum",
+      "check": "cache.prefix_below_minimum",
+      "severity": "info",
+      "confidence": "experimental",
+      "params": { "min_prefix_chars": 4096 },
+      "message": "The marked prefix looks too short to reach this model's minimum cacheable length.",
+      "remediation": "Either move the breakpoint later so more stable content falls inside it, or drop the cache_control marker: a prefix below the minimum cacheable length is not stored, and the marker adds nothing.",
+      "provenance": {
+        "source_kind": "inference",
+        "reference": "Documented minimum, heuristic unit. The provider publishes a minimum cacheable prompt length per model in tokens; this rule counts characters of request content instead, because that needs no tokenizer and no network. The threshold is the model's token minimum at roughly four characters per token, and each profile overrides it with the figure for the models it names. It will misjudge content that tokenizes unusually, and it is not a provider-published character figure.",
+        "evidence_date": "2026-08-15"
+      }
+    },
+    {
+      "rule_id": "cache.no-breakpoint",
+      "check": "cache.no_breakpoint",
+      "severity": "info",
+      "confidence": "experimental",
+      "params": { "min_prefix_chars": 2048 },
+      "message": "The request carries a substantial block of tool and system content with no cache_control marker on it.",
+      "remediation": "If this prefix is stable across turns, add a cache_control marker to the last block of it — normally the final tool definition or the end of the system prompt. If it is not stable, no marker is the right call.",
+      "provenance": {
+        "source_kind": "inference",
+        "reference": "Heuristic. Caching on this surface is opt-in per request through cache_control, so a large stable prefix with no marker is never cached. Whether the prefix is actually stable across turns cannot be determined from a single request, which is why this is informational rather than a defect. The threshold is the profile's character proxy for the documented per-model token minimum.",
+        "evidence_date": "2026-08-15"
+      }
+    }
+  ]
+}

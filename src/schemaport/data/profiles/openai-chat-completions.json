@@ -1,0 +1,37 @@
+{
+  "profile_id": "openai/chat-completions",
+  "provider": "openai",
+  "request_shape": "openai.chat_completions",
+  "api_surface": "Chat Completions API",
+  "models": [
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna"
+  ],
+  "model_scope": {
+    "basis": "published_artifact",
+    "reference": "OpenAI publishes its REST API as an OpenAPI 3.1 document, which is what the official SDKs are generated from; all three identifiers appear in it at the pinned revision. That establishes the models exist on this API, which prose documentation alone did not. The Structured Outputs contract these rules encode is separately documented at https://developers.openai.com/api/docs/guides/structured-outputs, which states model support as a version range (the gpt-4o-2024-08-06 snapshot and later) rather than a per-model capability flag; these identifiers fall inside that range. Older snapshots inside the range are deliberately excluded, because several limits encoded here have been revised upward since they shipped.",
+    "evidence_date": "2026-08-15",
+    "verified": [
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "artifact": {
+      "url": "https://raw.githubusercontent.com/openai/openai-openapi/{revision}/openapi.yaml",
+      "revision": "2186421dca0cca7c1e67caa7739005e8b1ccc4dd",
+      "tracks": "master",
+      "expect": [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna"
+      ]
+    }
+  },
+  "extends": [
+    "openai-structured-outputs"
+  ],
+  "summary": "The same strict Structured Outputs contract as the Responses profile, for requests still shaped for Chat Completions, where the schema sits under response_format.json_schema.",
+  "coverage": "Applies to the model identifiers named, on the Chat Completions API. Separate from the Responses profile because the schema and content live in different places in the request, not because the contract differs. Pass the surface you actually send to; a request checked against one shape says nothing about the other. Each identifier is pinned to OpenAI's published OpenAPI document at an exact revision, so the model list is re-checkable by tools/verify_contract_data.py and provider drift is detectable rather than silent. What the artifact establishes is that these models exist on this API; the Structured Outputs contract itself comes from the guide, which scopes support by version range. A dated probe would be the next step up, and this release ships none.",
+  "rules": []
+}
