@@ -17,6 +17,7 @@ jobs:
   test:
     name: py${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -30,9 +31,9 @@ jobs:
           - python-version: "3.13"
             os: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -76,10 +77,11 @@ jobs:
   offline:
     name: no network access
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -88,25 +90,57 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
-      - name: Block egress, then run the suite
+      - name: Run the suite in a network namespace with no route out
         # The offline guarantee is load-bearing for the sandboxed and air-gapped
         # environments this tool targets, so it is enforced here rather than
-        # trusted. The test suite already disables sockets in-process; this
-        # catches anything that would escape that.
+        # trusted.
+        #
+        # The isolation is a private network namespace, not a machine-wide
+        # firewall rule. Dropping egress for the whole runner also severs the
+        # Actions agent's own link back to GitHub, so the job cannot report a
+        # result and hangs until the timeout instead of failing. Unsharing the
+        # namespace takes the network away from the test process alone.
+        #
+        # Invoked through `python -m` because sudo resets PATH via secure_path,
+        # so the console script would not be found.
         run: |
-          sudo iptables -P OUTPUT DROP
-          sudo iptables -A OUTPUT -o lo -j ACCEPT
-          python -m pytest
-          schemaport check examples/requests/anthropic-cached-agent-turn.json \
-            --model claude-sonnet-5 --format json > /dev/null || [ "$?" -eq 1 ]
+          cat > /tmp/offline-check.sh <<'SH'
+          set -euo pipefail
+
+          # Loopback starts down in a fresh namespace. Nothing here needs it,
+          # but leaving it down would turn an unrelated bug into a confusing one.
+          ip link set lo up
+
+          "$PYTHON_BIN" -m pytest
+
+          status=0
+          "$PYTHON_BIN" -m schemaport check \
+            examples/requests/anthropic-cached-agent-turn.json \
+            --model claude-sonnet-5 --format json > /dev/null || status=$?
+          # 1 means findings, which is what this example is supposed to produce.
+          [ "$status" -eq 1 ]
+          SH
+          sudo PYTHON_BIN="$(which python)" unshare --net -- bash /tmp/offline-check.sh
+
+      - name: Confirm the namespace really had no route out
+        # A guarantee enforced by a broken harness is worse than no guarantee,
+        # so prove the isolation works before trusting the step above.
+        run: |
+          if sudo unshare --net -- bash -c 'ip link set lo up; \
+            timeout 10 getent hosts pypi.org' 2>/dev/null; then
+            echo "::error::DNS resolved inside the namespace; the isolation is not working"
+            exit 1
+          fi
+          echo "confirmed: no name resolution inside the namespace"
 
   package:
     name: build and verify the distribution
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -147,7 +181,7 @@ jobs:
           /tmp/check/bin/schemaport --version
           /tmp/check/bin/schemaport profiles
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
