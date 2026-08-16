@@ -84,6 +84,12 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          # TestPyPI is a scratch index. If a release is re-run after a
+          # transient failure downstream, re-uploading the same files should be
+          # a no-op rather than a hard stop. Deliberately not set on the PyPI
+          # job below, where a filename collision is something you want to hear
+          # about.
+          skip-existing: true
 
   smoke-test:
     name: install from TestPyPI
@@ -96,17 +102,44 @@ jobs:
           python-version: "3.13"
 
       - name: Install the published artifact and run it
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
-          for attempt in 1 2 3 4 5; do
-            if python -m pip install \
+          set -euo pipefail
+
+          # An upload is visible on the simple index some time after the publish
+          # step returns, and the delay has run past four minutes. Two things
+          # this loop has to get right, both learned the hard way:
+          #
+          #   --no-cache-dir, because pip caches the index page. Without it every
+          #   retry re-reads the same stale listing and the loop cannot succeed
+          #   no matter how long it waits.
+          #
+          #   An explicit failure when the attempts run out. Falling through to
+          #   the smoke test reports "command not found", which sends you
+          #   looking at the console script instead of at the index.
+          installed=""
+          for delay in 15 30 30 60 60 60 90 90; do
+            if python -m pip install --no-cache-dir \
               --index-url https://test.pypi.org/simple/ \
               --extra-index-url https://pypi.org/simple \
-              "schemaport==${{ needs.build.outputs.version }}"; then
+              "schemaport==${VERSION}"; then
+              installed=yes
               break
             fi
-            echo "TestPyPI index not ready yet; retrying in 30s"
-            sleep 30
+            echo "schemaport==${VERSION} not on the TestPyPI index yet; waiting ${delay}s"
+            sleep "$delay"
           done
+
+          if [ -z "$installed" ]; then
+            echo "::error::schemaport==${VERSION} never appeared on the TestPyPI index."
+            echo "The publish step succeeded, so the artifact exists; this is index lag"
+            echo "or a version mismatch. Current listing:"
+            curl -s "https://test.pypi.org/simple/schemaport/" \
+              | grep -oE 'schemaport-[0-9.]+' | sort -u || true
+            exit 1
+          fi
+
           schemaport --version
           schemaport profiles
 

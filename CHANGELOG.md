@@ -9,10 +9,26 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 
 Nothing yet.
 
-## 0.1.1 — 2026-08-16
+## 0.1.2 — 2026-08-16
 
-First release published to PyPI. 0.1.0 was uploaded to TestPyPI only and never
-promoted, so it is skipped here.
+First release published to PyPI. 0.1.0 and 0.1.1 reached TestPyPI only.
+
+### Fixed
+
+- The release workflow's TestPyPI smoke test gave up after two and a half
+  minutes, which is shorter than the index has actually taken to list a fresh
+  upload, and did not pass `--no-cache-dir`, so every retry re-read a cached
+  index page and could never have succeeded. On exhaustion it fell through to
+  the smoke test instead of failing, reporting `command not found` and pointing
+  at the wrong problem. It now backs off for about seven minutes, bypasses the
+  cache, and fails with the actual index listing.
+
+## 0.1.1 — not published to PyPI
+
+Tagged and uploaded to TestPyPI. The release stopped at the smoke test above,
+and rather than move the tag — which would have left PyPI receiving artifacts
+built from one commit while the smoke test validated another — the fix ships as
+0.1.2.
 
 ### Changed
 
@@ -24,7 +40,7 @@ promoted, so it is skipped here.
 
 Tagged and uploaded to TestPyPI, then withdrawn before promotion when the
 README problem above was found. The version was never published to PyPI and
-will not be. Everything below shipped as part of 0.1.1.
+will not be. Everything below shipped as part of 0.1.2.
 
 ### Added
 
