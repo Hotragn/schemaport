@@ -37,6 +37,83 @@ In the source these stages map to `engine.check` (the whole pipeline),
 request layout), the analyzers under `analyzers/`, and the renderers under
 `reporters/`.
 
+## Module map
+
+The same pipeline, by file. The seam worth noticing is `analyzers/__init__.py`:
+analyzers are registered by name, and a rule in the dataset names the analyzer
+it wants. That indirection is what keeps provider knowledge out of the code.
+
+```mermaid
+flowchart TD
+    subgraph entry [Entry points]
+        main["__main__.py<br/><i>python -m schemaport</i>"]
+        cli["cli.py<br/><i>check, profiles</i>"]
+        api["__init__.py<br/><i>check, check_file</i>"]
+    end
+
+    engine["engine.py<br/><b>orchestrates one run</b>"]
+
+    subgraph resolve [Resolution]
+        contracts["contracts.py<br/><i>loads dataset, resolves profile</i>"]
+        shapes["shapes.py<br/><i>detects surface, locates<br/>schemas and segments</i>"]
+    end
+
+    subgraph analysis [Analysis]
+        registry["analyzers/__init__.py<br/><b>registry: name to function</b>"]
+        so["structured_output.py"]
+        cache["cache_safety.py"]
+        paths["paths.py<br/><i>JSON paths</i>"]
+    end
+
+    subgraph data [Contract data - shipped, versioned]
+        manifest[("dataset.json<br/><i>manifest</i>")]
+        profiles["profiles/*.json<br/><i>6 profiles, 15 models</i>"]
+        rulesets["rule-sets/*.json<br/><i>shared records</i>"]
+    end
+
+    types["model.py<br/><i>Finding, Report, Severity,<br/>Confidence, Provenance</i>"]
+
+    subgraph out [Output]
+        text["reporters/text.py"]
+        json["reporters/json_report.py"]
+        sarif["reporters/sarif.py"]
+    end
+
+    main --> cli
+    cli --> engine
+    api --> engine
+    engine --> contracts
+    engine --> shapes
+    engine --> registry
+    contracts --> manifest
+    manifest --> profiles
+    manifest --> rulesets
+    rulesets -. "extended by" .-> profiles
+    registry --> so
+    registry --> cache
+    so --> paths
+    cache --> paths
+    profiles -- "rules name an analyzer" --> registry
+    so --> types
+    cache --> types
+    engine --> types
+    types --> text
+    types --> json
+    types --> sarif
+
+    classDef code fill:#1E293B,stroke:#38BDF8,color:#E2E8F0
+    classDef store fill:#052E24,stroke:#4ADE80,color:#E2E8F0
+    classDef result fill:#2E1065,stroke:#A78BFA,color:#E2E8F0
+    class main,cli,api,engine,contracts,shapes,registry,so,cache,paths,types code
+    class manifest,profiles,rulesets store
+    class text,json,sarif result
+```
+
+Everything inside the package is offline. One tool sits outside it:
+`tools/verify_contract_data.py` re-fetches the provider artifacts that records
+cite and reports drift. It is networked, opt-in, not installed with the
+package, and run on a schedule by `.github/workflows/contract-drift.yml`.
+
 ## Outside the execution path, on purpose
 
 Schemaport is not a proxy, middleware layer, SDK wrapper, or transport hook. It
