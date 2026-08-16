@@ -1,6 +1,17 @@
-# Schemaport
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Hotragn/schemaport/main/assets/icon.png" alt="" width="96" height="96">
+</p>
 
-**Check an AI request before you send it.**
+<h1 align="center">Schemaport</h1>
+
+<p align="center"><strong>Check an AI request before you send it.</strong></p>
+
+<p align="center">
+  <a href="https://pypi.org/project/schemaport/"><img src="https://img.shields.io/pypi/v/schemaport?color=0F172A&labelColor=38BDF8" alt="PyPI"></a>
+  <a href="https://pypi.org/project/schemaport/"><img src="https://img.shields.io/pypi/pyversions/schemaport" alt="Python versions"></a>
+  <a href="https://github.com/Hotragn/schemaport/actions/workflows/ci.yml"><img src="https://github.com/Hotragn/schemaport/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Hotragn/schemaport/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/schemaport" alt="Apache-2.0"></a>
+</p>
 
 When your program talks to an AI model, it sends a block of JSON describing what
 it wants. That JSON has to follow rules — and the rules differ between
