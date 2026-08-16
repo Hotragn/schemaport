@@ -7,13 +7,61 @@
       "check": "tool.name_pattern",
       "severity": "error",
       "confidence": "documented",
-      "params": { "pattern": "^[a-zA-Z0-9_-]{1,64}$", "max_length": 64 },
+      "params": {
+        "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+        "max_length": 64
+      },
       "message": "Tool names on this surface must match ^[a-zA-Z0-9_-]{1,64}$.",
       "remediation": "Rename the tool to letters, digits, underscores, or hyphens, at most 64 characters — replace spaces and punctuation with underscores — and update every reference to the old name in the request.",
       "provenance": {
         "source_kind": "provider_documentation",
         "reference": "Anthropic \"Define tools\", client tool parameter table: the name field \"Must match the regex ^[a-zA-Z0-9_-]{1,64}$\". https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools",
         "evidence_date": "2026-08-15"
+      },
+      "probe": {
+        "expectation": "Rejected: tool names are restricted to ^[a-zA-Z0-9_-]{1,64}$.",
+        "requests": {
+          "anthropic.messages": {
+            "request": {
+              "max_tokens": 1,
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "tools": [
+                {
+                  "name": "bad name",
+                  "description": "probe",
+                  "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              ]
+            },
+            "control": {
+              "max_tokens": 1,
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "tools": [
+                {
+                  "name": "good_name",
+                  "description": "probe",
+                  "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     },
     {
@@ -21,14 +69,62 @@
       "check": "structured_output.root_type",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
-      "params": { "expected_type": "object" },
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
+      "params": {
+        "expected_type": "object"
+      },
       "message": "A tool's input_schema must be a JSON Schema whose root declares type \"object\".",
       "remediation": "Set \"type\": \"object\" at the root of this input_schema and move the existing schema under \"properties\", naming each parameter.",
       "provenance": {
         "source_kind": "provider_documentation",
         "reference": "Anthropic \"Structured outputs\", JSON Schema limitations: the root type \"Must be object\". Applies to tool input_schema through strict tool use, which compiles input_schema with the same pipeline. https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
         "evidence_date": "2026-08-15"
+      },
+      "probe": {
+        "expectation": "Rejected: a tool input_schema must have an object at its root.",
+        "requests": {
+          "anthropic.messages": {
+            "request": {
+              "max_tokens": 1,
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "tools": [
+                {
+                  "name": "probe_tool",
+                  "description": "probe",
+                  "input_schema": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "control": {
+              "max_tokens": 1,
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "tools": [
+                {
+                  "name": "probe_tool",
+                  "description": "probe",
+                  "input_schema": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              ]
+            }
+          }
+        }
       }
     },
     {
@@ -36,9 +132,13 @@
       "check": "structured_output.additional_properties",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
       "requires_strict": true,
-      "params": { "expected": false },
+      "params": {
+        "expected": false
+      },
       "message": "Under strict tool use, every object in an input_schema must set \"additionalProperties\": false.",
       "remediation": "Add \"additionalProperties\": false to the object schema at this path. It is required on every object in the schema, not only the root, and no other value is accepted.",
       "provenance": {
@@ -52,7 +152,9 @@
       "check": "structured_output.unsupported_keywords",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
       "requires_strict": true,
       "params": {
         "keywords": [
@@ -94,9 +196,17 @@
       "check": "structured_output.keyword_allowed_values",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
       "requires_strict": true,
-      "params": { "keyword": "minItems", "allowed": [0, 1] },
+      "params": {
+        "keyword": "minItems",
+        "allowed": [
+          0,
+          1
+        ]
+      },
       "message": "Under strict tool use, minItems accepts only 0 or 1 on this surface.",
       "remediation": "Set minItems to 0 or 1, or drop it and check the array length in your application after the tool call is parsed.",
       "provenance": {
@@ -110,9 +220,19 @@
       "check": "structured_output.enum_value_types",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
       "requires_strict": true,
-      "params": { "allowed": ["string", "integer", "number", "boolean", "null"] },
+      "params": {
+        "allowed": [
+          "string",
+          "integer",
+          "number",
+          "boolean",
+          "null"
+        ]
+      },
       "message": "Under strict tool use, enum values must be strings, numbers, booleans, or null.",
       "remediation": "Replace the object or array entries with scalar values. Model the structure with a nested object schema and use the enum only for the scalar field that varies.",
       "provenance": {
@@ -126,7 +246,9 @@
       "check": "structured_output.external_ref",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
       "requires_strict": true,
       "params": {},
       "message": "Under strict tool use, $ref must point inside the same schema document.",
@@ -142,7 +264,9 @@
       "check": "structured_output.recursive_schema",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["tool_input_schema"],
+      "applies_to_kinds": [
+        "tool_input_schema"
+      ],
       "requires_strict": true,
       "params": {},
       "message": "Recursive schemas are not accepted under strict tool use on this surface.",
@@ -158,7 +282,9 @@
       "check": "cache.breakpoint_limit",
       "severity": "error",
       "confidence": "documented",
-      "params": { "limit": 4 },
+      "params": {
+        "limit": 4
+      },
       "message": "The request defines more cache_control breakpoints than this surface accepts.",
       "remediation": "Reduce the request to at most four cache_control markers. Keep the ones at the boundaries of content that genuinely stays stable across turns — normally the end of the tool definitions and the end of the system prompt.",
       "provenance": {
@@ -209,7 +335,9 @@
       "check": "cache.prefix_below_minimum",
       "severity": "info",
       "confidence": "experimental",
-      "params": { "min_prefix_chars": 4096 },
+      "params": {
+        "min_prefix_chars": 4096
+      },
       "message": "The marked prefix looks too short to reach this model's minimum cacheable length.",
       "remediation": "Either move the breakpoint later so more stable content falls inside it, or drop the cache_control marker: a prefix below the minimum cacheable length is not stored, and the marker adds nothing.",
       "provenance": {
@@ -223,7 +351,9 @@
       "check": "cache.no_breakpoint",
       "severity": "info",
       "confidence": "experimental",
-      "params": { "min_prefix_chars": 2048 },
+      "params": {
+        "min_prefix_chars": 2048
+      },
       "message": "The request carries a substantial block of tool and system content with no cache_control marker on it.",
       "remediation": "If this prefix is stable across turns, add a cache_control marker to the last block of it — normally the final tool definition or the end of the system prompt. If it is not stable, no marker is the right call.",
       "provenance": {

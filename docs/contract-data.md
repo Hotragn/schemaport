@@ -101,6 +101,69 @@ levels. See [agent-integration.md](agent-integration.md).
 Every cache-safety rule in this release is `experimental`, and every one of them
 says in its provenance what the estimate rests on and where it will be wrong.
 
+## Earning an `observed` record
+
+`documented` is a transcription. `observed` is a measurement, and the only way
+to get one is to ask the endpoint. `tools/probe_contract_data.py` does that.
+
+Like the verifier, it sits outside the installed package. Nothing importable
+from `schemaport` opens a socket, and that stays true.
+
+### A rejection alone proves nothing
+
+Send a request containing the construct under test, get a 400, and you have
+learned almost nothing — the request might have been refused for an unrelated
+reason. What isolates the cause is a **matched pair**:
+
+- a **probe** carrying the construct, expected to be rejected, and
+- a **control** identical in every other respect, expected to be accepted.
+
+Rejected probe plus accepted control means the construct caused the rejection.
+Anything else is `inconclusive`, and inconclusive artifacts do not justify
+promotion. The loader enforces the pairing: a probe without a control, or one
+whose control is identical to its request, is a dataset error rather than a
+surprise at run time.
+
+Probe bodies are keyed by request shape, because the same constraint is written
+differently on each surface. A Responses body sent to Chat Completions is
+rejected for the wrong reason — which looks like evidence and is not.
+
+### What it costs
+
+Rejection probes are **free**: the request fails validation before the model
+runs, so no tokens are generated. Controls **are** billable, because being
+accepted is the point, though each is capped at one output token.
+
+Nothing is sent without `--execute`; the default prints the plan and exits.
+Controls additionally need `--with-controls`. Run without them and every result
+is recorded as inconclusive, which the plan says up front.
+
+```bash
+python tools/probe_contract_data.py                    # plan only, sends nothing
+python tools/probe_contract_data.py --execute --with-controls
+python tools/probe_contract_data.py --rule tool.name-invalid --execute --with-controls
+```
+
+Credentials come from `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`, are read at send
+time, and are never stored or written to an artifact.
+
+### Artifacts and promotion
+
+Each run writes `probes/artifacts/<provider>/<model>/<rule_id>.json`: the
+synthetic request, the status, the provider's redacted error, the verdict, and
+the date. Requests are constructed by the tool and contain no user content.
+Anything credential- or account-shaped is stripped before writing.
+
+A confirmed probe prints the provenance block it earned. Applying it is manual,
+for the same reason the verifier reports drift instead of fixing it: deciding
+that an observation is sound is a judgement call, and it belongs to whoever
+edits the record.
+
+A probe that is **refuted** — the endpoint accepted what the record says it
+refuses — exits non-zero. That is the most valuable result the tool produces,
+because it means a `documented` claim is wrong, which is the entire reason this
+dataset separates documentation from behaviour.
+
 ## Provenance requirements
 
 Confidence says how strong the evidence is. Provenance says what the evidence

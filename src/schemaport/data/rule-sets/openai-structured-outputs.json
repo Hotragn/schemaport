@@ -21,15 +21,118 @@
       "check": "structured_output.root_type",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format"],
+      "applies_to_kinds": [
+        "response_format"
+      ],
       "requires_strict": true,
-      "params": { "expected_type": "object" },
+      "params": {
+        "expected_type": "object"
+      },
       "message": "The root of a strict json_schema must declare type \"object\".",
       "remediation": "Wrap the current schema in an object: set \"type\": \"object\" at the root and move the existing schema under a named property, for example \"items\" or \"result\".",
       "provenance": {
         "source_kind": "provider_documentation",
         "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"root level object of a schema must be an object, and not use anyOf\". https://developers.openai.com/api/docs/guides/structured-outputs",
         "evidence_date": "2026-08-15"
+      },
+      "probe": {
+        "expectation": "Rejected: the root of a strict schema must be an object.",
+        "requests": {
+          "openai.responses": {
+            "request": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "control": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "openai.chat_completions": {
+            "request": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "control": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     {
@@ -37,9 +140,15 @@
       "check": "structured_output.root_forbidden_keywords",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format"],
+      "applies_to_kinds": [
+        "response_format"
+      ],
       "requires_strict": true,
-      "params": { "keywords": ["anyOf"] },
+      "params": {
+        "keywords": [
+          "anyOf"
+        ]
+      },
       "message": "A strict json_schema may not use anyOf at its root.",
       "remediation": "Move the anyOf one level down: make the root an object with a single property whose schema carries the anyOf.",
       "provenance": {
@@ -53,15 +162,129 @@
       "check": "structured_output.additional_properties",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
-      "params": { "expected": false },
+      "params": {
+        "expected": false
+      },
       "message": "Every object in a strict schema must set \"additionalProperties\": false.",
       "remediation": "Add \"additionalProperties\": false to the object schema at this path. Strict mode requires it on every object, not only the root.",
       "provenance": {
         "source_kind": "provider_documentation",
         "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"additionalProperties: false must always be set in objects\". https://developers.openai.com/api/docs/guides/structured-outputs",
         "evidence_date": "2026-08-15"
+      },
+      "probe": {
+        "expectation": "Rejected: strict mode requires additionalProperties false on every object.",
+        "requests": {
+          "openai.responses": {
+            "request": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ]
+                  }
+                }
+              }
+            },
+            "control": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "openai.chat_completions": {
+            "request": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ]
+                  }
+                }
+              }
+            },
+            "control": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     {
@@ -69,7 +292,10 @@
       "check": "structured_output.required_completeness",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
       "params": {},
       "message": "Every property declared on an object in a strict schema must appear in that object's \"required\" array.",
@@ -78,6 +304,131 @@
         "source_kind": "provider_documentation",
         "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: \"All fields or function parameters must be specified as required\"; optional fields are expressed as a union with null. https://developers.openai.com/api/docs/guides/structured-outputs",
         "evidence_date": "2026-08-15"
+      },
+      "probe": {
+        "expectation": "Rejected: strict mode requires every property to appear in required.",
+        "requests": {
+          "openai.responses": {
+            "request": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      },
+                      "extra": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            },
+            "control": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      },
+                      "extra": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer",
+                      "extra"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "openai.chat_completions": {
+            "request": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      },
+                      "extra": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            },
+            "control": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      },
+                      "extra": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer",
+                      "extra"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     {
@@ -85,7 +436,10 @@
       "check": "structured_output.unsupported_keywords",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
       "params": {
         "keywords": [
@@ -104,6 +458,125 @@
         "source_kind": "provider_documentation",
         "reference": "OpenAI \"Structured Outputs\" guide, supported schemas: the unsupported composition keywords are \"allOf, not, dependentRequired, dependentSchemas, if, then, else\". https://developers.openai.com/api/docs/guides/structured-outputs",
         "evidence_date": "2026-08-15"
+      },
+      "probe": {
+        "expectation": "Rejected: allOf is outside the strict-mode subset.",
+        "requests": {
+          "openai.responses": {
+            "request": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "allOf": [
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            },
+            "control": {
+              "input": "ping",
+              "max_output_tokens": 16,
+              "text": {
+                "format": {
+                  "type": "json_schema",
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "openai.chat_completions": {
+            "request": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "allOf": [
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            },
+            "control": {
+              "messages": [
+                {
+                  "role": "user",
+                  "content": "ping"
+                }
+              ],
+              "max_tokens": 1,
+              "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                  "name": "probe",
+                  "strict": true,
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "answer": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "answer"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     {
@@ -111,9 +584,14 @@
       "check": "structured_output.max_depth",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
-      "params": { "limit": 10 },
+      "params": {
+        "limit": 10
+      },
       "message": "A strict schema may nest up to 10 levels deep.",
       "remediation": "Flatten the schema. Lift the deepest objects into \"$defs\" and reference them, or split the response into two calls so each schema stays inside the limit.",
       "provenance": {
@@ -127,9 +605,14 @@
       "check": "structured_output.total_object_properties",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
-      "params": { "limit": 5000 },
+      "params": {
+        "limit": 5000
+      },
       "message": "A strict schema may declare up to 5000 object properties in total.",
       "remediation": "Reduce the number of properties across the whole schema. This is a total, not a per-object cap, so splitting one large object into several does not help — drop fields the model does not need to produce, or split the work across calls.",
       "provenance": {
@@ -143,9 +626,14 @@
       "check": "structured_output.total_enum_values",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
-      "params": { "limit": 1000 },
+      "params": {
+        "limit": 1000
+      },
       "message": "A strict schema may declare up to 1000 enum values across all enum properties.",
       "remediation": "Move the large value set out of the schema: accept a plain string and validate it against your list after the response is parsed, or narrow the enum to the values this call can actually return.",
       "provenance": {
@@ -159,9 +647,14 @@
       "check": "structured_output.total_string_length",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
-      "params": { "limit_chars": 120000 },
+      "params": {
+        "limit_chars": 120000
+      },
       "message": "The combined length of property names, definition names, enum values, and const values in a strict schema may not exceed 120,000 characters.",
       "remediation": "Shorten identifiers and move long literal value sets out of the schema. Schemas assembled from live data are the usual cause — validate those values in your application instead of encoding them as enums.",
       "provenance": {
@@ -175,9 +668,15 @@
       "check": "structured_output.large_enum_string_length",
       "severity": "error",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
-      "params": { "value_threshold": 250, "limit_chars": 15000 },
+      "params": {
+        "value_threshold": 250,
+        "limit_chars": 15000
+      },
       "message": "A single enum property with more than 250 values is limited to 15,000 characters across those values.",
       "remediation": "Split the enum across several properties, shorten the values to codes your application expands after parsing, or drop the enum and validate the value yourself.",
       "provenance": {
@@ -191,7 +690,10 @@
       "check": "structured_output.unsupported_keywords",
       "severity": "info",
       "confidence": "documented",
-      "applies_to_kinds": ["response_format", "tool_parameters"],
+      "applies_to_kinds": [
+        "response_format",
+        "tool_parameters"
+      ],
       "requires_strict": true,
       "params": {
         "keywords": [

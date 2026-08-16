@@ -51,6 +51,11 @@ class Rule:
     params: Mapping[str, Any]
     applies_to_kinds: tuple[str, ...]
     requires_strict: bool
+    # A synthetic request that isolates this constraint, plus the matched
+    # control that differs only in the construct under test. Read by
+    # tools/probe_contract_data.py, never by the checker — the package itself
+    # never sends anything.
+    probe: Mapping[str, Any] | None = None
 
     def targets_kind(self, kind: str) -> bool:
         """Whether this rule applies to a given schema location kind."""
@@ -411,7 +416,61 @@ def _parse_rule(raw: Mapping[str, Any], *, source: str, defaults: Scope) -> Rule
         params=dict(params),
         applies_to_kinds=tuple(str(k) for k in kinds),
         requires_strict=bool(raw.get("requires_strict", False)),
+        probe=_parse_probe(raw.get("probe"), rule_id=rule_id, source=source),
     )
+
+
+def _parse_probe(raw: Any, *, rule_id: str, source: str) -> Mapping[str, Any] | None:
+    """Validate a probe definition at load time rather than at send time.
+
+    A malformed probe is only discovered when someone runs the prober against a
+    live endpoint, which is the worst moment to find out. The `control` is
+    required: a rejection with nothing to compare it against does not show the
+    construct under test caused it.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ContractDataError(f"{source}: rule {rule_id!r} 'probe' must be an object")
+    if not raw.get("expectation"):
+        raise ContractDataError(f"{source}: rule {rule_id!r} probe is missing 'expectation'")
+
+    # Bodies are keyed by request shape. A rule set is shared across surfaces,
+    # and the same constraint is expressed differently on each — a Responses
+    # body sent to Chat Completions is rejected for the wrong reason, which
+    # looks like evidence and is not.
+    by_shape = raw.get("requests")
+    if not isinstance(by_shape, Mapping) or not by_shape:
+        raise ContractDataError(
+            f"{source}: rule {rule_id!r} probe needs a 'requests' object keyed by request shape"
+        )
+
+    for shape, pair in by_shape.items():
+        if not isinstance(pair, Mapping):
+            raise ContractDataError(f"{source}: rule {rule_id!r} probe {shape!r} must be an object")
+        if "control" not in pair:
+            raise ContractDataError(
+                f"{source}: rule {rule_id!r} probe {shape!r} has no control. A rejection with "
+                f"nothing to compare against cannot be attributed to the construct under test."
+            )
+        for key in ("request", "control"):
+            body = pair.get(key)
+            if not isinstance(body, Mapping):
+                raise ContractDataError(
+                    f"{source}: rule {rule_id!r} probe {shape!r} {key!r} must be an object"
+                )
+            if "model" in body:
+                raise ContractDataError(
+                    f"{source}: rule {rule_id!r} probe {shape!r} {key!r} pins a model. The "
+                    f"prober fills that in per profile, so a pinned one would probe the "
+                    f"wrong target."
+                )
+        if pair["request"] == pair["control"]:
+            raise ContractDataError(
+                f"{source}: rule {rule_id!r} probe {shape!r} control is identical to the "
+                f"request, so it isolates nothing."
+            )
+    return dict(raw)
 
 
 def _read_json(resource: Any, label: str) -> Mapping[str, Any]:

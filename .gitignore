@@ -33,3 +33,8 @@ Thumbs.db
 *.pem
 *.key
 scratch/
+
+# Probe output. An artifact is evidence and belongs in the repository once it
+# has been reviewed, but not straight off an exploratory run — force-add the
+# ones you mean to keep.
+probes/artifacts/
