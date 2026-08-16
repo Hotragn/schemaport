@@ -9,11 +9,22 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 
 Nothing yet.
 
-## 0.1.0 — unreleased
+## 0.1.1 — 2026-08-16
 
-Not yet tagged or published. Dates go in when the release is cut.
+First release published to PyPI. 0.1.0 was uploaded to TestPyPI only and never
+promoted, so it is skipped here.
 
-First public release.
+### Changed
+
+- Shortened the README and made every documentation link absolute. Relative
+  links resolve against pypi.org on the project page rather than against the
+  repository, so all ten of them were dead there.
+
+## 0.1.0 — not published to PyPI
+
+Tagged and uploaded to TestPyPI, then withdrawn before promotion when the
+README problem above was found. The version was never published to PyPI and
+will not be. Everything below shipped as part of 0.1.1.
 
 ### Added
 

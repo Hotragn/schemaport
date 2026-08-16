@@ -17,7 +17,7 @@ The request is read, never sent and never modified.
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from schemaport.contracts import ContractDataset, Profile, Rule, load_dataset
 from schemaport.engine import analyze, check, check_file
