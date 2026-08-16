@@ -1,122 +1,50 @@
 # Schemaport
 
-**Static request conformance for the agent–provider boundary.**
+**Check an AI request before you send it.**
 
-Schemaport checks a fully rendered LLM request before your application or agent
-sends it. It reads a request JSON file and a target model, resolves a bundled,
-versioned provider-contract profile, and emits deterministic findings with
-stable rule IDs, JSON paths, severity, remediation, confidence, and
-provenance — in text, JSON, or SARIF.
+When your program talks to an AI model, it sends a block of JSON describing what
+it wants. That JSON has to follow rules — and the rules differ between
+providers, between models, and over time. Get one wrong and you find out after
+you've paid for the call.
 
-It runs locally: no SDK, API key, telemetry, proxy, or network call. Stable exit
-codes make it usable in CI, air-gapped evaluation harnesses, and agent repair
-loops. Apache-2.0 licensed.
-
-## Install
+Schemaport reads that block of JSON on your machine and tells you what's wrong
+before it goes anywhere. It never sends the request, never contacts a provider,
+and never asks for an API key.
 
 ```bash
 pip install schemaport
-```
-
-Python 3.10+. No runtime dependencies, no provider SDK, no credentials.
-
-## Quick start
-
-Point it at a request body you have already rendered, and the model you intend
-to send it to:
-
-```bash
 schemaport check request.json --model claude-sonnet-5
 ```
 
-The input is the request body itself — the JSON you would hand to the provider —
-not a wrapper, log line, or SDK call. `--model` is required rather than
-inferred, because a profile's claims apply only to the models it names; run
-`schemaport profiles` to see them.
+## Two problems it catches
 
-For machine consumption, ask for JSON and set the severity that should fail:
+**A rule you didn't know about.** You can ask a model to reply in a specific
+shape — "give me an object with a customer ID and a status." That shape is
+written in a standard called JSON Schema, and providers only support *part* of
+that standard. Use a part they don't support and the result varies: sometimes
+an error, sometimes the constraint is quietly ignored, sometimes the model
+returns something you didn't ask for. Which of those you get depends on the
+provider and the model.
 
-```bash
-schemaport check request.json --model claude-sonnet-5 --format json --fail-on warning
-```
+**A prompt that stopped being cheap.** Providers charge less when the beginning
+of your prompt is byte-for-byte identical to last time — they cache it. Put a
+timestamp or a random session ID near the top and that stops matching. Nothing
+errors. Nothing looks broken. You just quietly pay full price on every call,
+and you may not notice until you read the bill.
 
-A model is often reachable on more than one API, and the request is shaped
-differently on each. Schemaport reads the request to work out which surface it
-was written for; when that is ambiguous it stops and asks for `--surface`
-rather than checking against a contract you may not be using.
+Both problems fail *quietly*, which is exactly why they survive testing and
+reach production. Schemaport makes them visible while they're still free to fix.
 
-Schemaport reads the file and writes a report. It does not send the request,
-contact the provider, or modify the input.
+## Why this matters more with agents
 
-| Exit | Meaning |
-| --- | --- |
-| `0` | Ran; nothing at or above `--fail-on`. |
-| `1` | Ran; found something at or above `--fail-on`. |
-| `2` | Could not use the invocation or input — unreadable file, invalid JSON, unknown model. |
+An agent builds its requests as it goes — assembling schemas, tool definitions,
+and prompts at runtime. Nobody reviews those before they're sent.
 
-`1` and `2` stay distinct on purpose: "your request has a problem" and "I could
-not check your request" call for different handling.
+So a bad request can fail thirty steps into a long task, throwing away all the
+work that came before it. And because agents often route between models, a
+request that's fine for one may be rejected by another.
 
-## The problem agents created
-
-Agentic systems build schemas, tool definitions, messages, and cache boundaries
-at runtime. Many of those request bodies are never reviewed by a human before
-they reach a provider.
-
-An unsupported structured-output construct can fail late in a long trajectory,
-wasting the context and tool work that came before it. Routing multiplies the
-risk: a request valid for one model family may be rejected, transformed, or only
-partially supported by another. Agent loops also create cache-risk patterns that
-ordinary prompt review misses — timestamps, UUIDs, and changing tool definitions
-can alter an otherwise stable prefix between turns, reducing cache reuse without
-producing an obvious application error.
-
-## Agent-native preflight
-
-Findings are structured, deterministic, and machine-readable, so an agent can
-inspect its own pending request, locate the affected path, apply a known
-remediation, and check again before it sends anything.
-
-```text
-agent drafts request
-        |
-        v
-schemaport check ──── clean ────> send to provider
-        |
-        └── findings: rule ID + JSON path + remediation
-                         |
-                         v
-                 agent repairs request ──> check again
-```
-
-Which makes it useful in two places: as a CI gate that stops invalid request
-contracts reaching deployment, and as a preflight call an agent or orchestrator
-makes before dispatch.
-
-Schemaport is not a runtime proxy or SDK replacement. It is an independent,
-side-effect-free check, deliberately outside the execution path, so it can run
-before dispatch, in CI, or offline with no provider access at all. Adopting it
-does not change how your application sends requests.
-
-## What it checks
-
-**Structured-output conformance.** Providers support different subsets and
-limits of JSON Schema. Schemaport analyzes the schema actually present in the
-request and reports constructs the selected profile marks as unsupported,
-model-specific, or beyond a documented limit — unsupported keywords, nesting
-depth, property counts, enum size, schema size.
-
-**Cache-safety heuristics.** It also reports likely cache-risk patterns:
-volatile content inside a cached prefix, cache markers past the point they
-protect, prefixes below a cacheability threshold. It does not claim an actual
-cache hit, token count, or bill — only static risk from request shape, with the
-assumptions stated.
-
-Both classes fail quietly, which is why they are worth encoding. Depending on
-provider and model, an unsupported keyword may be rejected, partially supported,
-silently transformed, or handled inconsistently across versions. Reduced cache
-reuse is usually silent at the application level and may surface only later, in
-provider metrics or costs.
+## What it looks like
 
 ```text
 error    tool.name-invalid
@@ -128,36 +56,104 @@ error    tool.name-invalid
          basis: documented — provider_documentation, recorded 2026-08-15
 ```
 
-## The contract dataset
+Every finding tells you four things: what rule broke, exactly where in your
+request, what to change, and what evidence the rule is based on.
 
-Provider documentation states intent; a provider endpoint enforces something,
-and the two are not the same artifact. Schemaport keeps the checking engine
-separate from the contract dataset so every rule carries a dataset version, the
-provider and models it applies to, a confidence level, a provenance record, and
-a date.
+## Using it
 
-Confidence is about evidence, not severity:
+You need Python 3.10 or newer. There are no other dependencies.
 
-- `documented` — stated in the provider's published material, and cited.
-- `observed` — reproduced against a live endpoint, dated and model-scoped.
-- `experimental` — inferred, provisional, or heuristic.
+```bash
+schemaport check request.json --model claude-sonnet-5
+```
 
-Dataset 0.1.0 covers the Anthropic Messages API and the OpenAI Responses and
-Chat Completions APIs. **It contains no `observed` records** — that level needs
-a reproducible probe against a live endpoint, and this release ships none.
+The input is the request itself — the JSON you were about to send — not a log
+line or a wrapper around it. `--model` is required rather than guessed, because
+a rule only applies to the models it was written for. Run `schemaport profiles`
+to see which models are covered.
 
-## Non-goals
+For scripts and agents, ask for JSON output and choose what counts as a failure:
 
-Schemaport does not send requests, proxy traffic, wrap an SDK, store prompts,
-cache responses, reconcile bills, select models, evaluate outputs, or judge
-prompt quality. It does not guarantee provider acceptance or cache behavior. A
-clean report means the request conforms to the resolved profile as far as the
-bundled data goes — keep your normal error handling on the provider call.
+```bash
+schemaport check request.json --model claude-sonnet-5 --format json --fail-on warning
+```
 
-There is no MCP server in this release. An adapter is a plausible future
-addition; nothing here describes shipped MCP functionality.
+`--format` can be `text`, `json`, or `sarif` (for code-scanning tools).
+`--fail-on` sets the lowest severity that exits non-zero, which is what makes it
+usable as a CI gate.
 
-## Library use
+Some models are reachable through more than one API, and the request looks
+different on each. Schemaport works out which one you wrote for; if that's
+genuinely ambiguous it stops and asks for `--surface` rather than checking
+against rules you may not be using.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Checked it. Nothing at or above your `--fail-on` level. |
+| `1` | Checked it. Found something. |
+| `2` | Couldn't check it — file missing, invalid JSON, unknown model. |
+
+`1` and `2` stay separate on purpose. "Your request has a problem" and "I
+couldn't read your request" need different responses, especially from a script.
+
+## For agents
+
+Findings are structured and predictable, so a program can act on them without a
+human in the loop: read the path, apply the fix, check again, then send.
+
+```text
+agent drafts request
+        |
+        v
+schemaport check ──── clean ────> send to provider
+        |
+        └── findings: rule ID + JSON path + fix
+                         |
+                         v
+                 agent repairs request ──> check again
+```
+
+The same check works as a CI gate, so a bad request contract fails the build
+instead of reaching production.
+
+Schemaport is not a proxy and doesn't wrap your API client. It's a separate
+command that reads a file, so it runs before you send, in CI, or on a machine
+with no internet at all. Adding it changes nothing about how your code sends
+requests, and removing it changes nothing either.
+
+## Where the rules come from
+
+Rules aren't hard-coded. They live in a versioned dataset that ships with the
+package, and each one records where it came from:
+
+- `documented` — the provider says so in writing, and the rule cites the page.
+- `observed` — someone ran it against the live API and saw it happen, on a
+  named model, on a date.
+- `experimental` — an educated guess, clearly labelled as one.
+
+That distinction matters because provider documentation describes intent, while
+the actual API enforces something — and the two don't always agree. Rather than
+picking a winner, Schemaport tells you which kind of evidence each finding rests
+on, so you can judge it.
+
+The current dataset covers the Anthropic Messages API and the OpenAI Responses
+and Chat Completions APIs. **It contains no `observed` rules** — that level
+requires testing against a live endpoint, and this release doesn't ship any such
+tests. Run `schemaport profiles` to see exactly what's covered.
+
+## What it doesn't do
+
+It doesn't send your request, store it, or see the response. It doesn't handle
+your API keys, choose models for you, judge your prompts, or estimate costs.
+
+It also can't promise your request will succeed. A clean report means your
+request matches the rules Schemaport knows about — provider behaviour changes,
+and coverage isn't complete. Keep your normal error handling.
+
+There's no MCP server in this release. One may make sense later; nothing here
+implements one today.
+
+## From Python
 
 ```python
 from schemaport import check_file
@@ -168,23 +164,23 @@ for finding in report.findings:
     print("  ", finding.remediation)
 ```
 
-`check` takes an already-parsed request mapping. Neither sends anything or
-mutates its input.
+`check()` takes an already-parsed dictionary if you have one. Neither function
+sends anything or modifies your request.
 
-## Compatibility
+## Versioning
 
-Semantic Versioning. While on `0.y.z`, breaking changes are documented in the
-[changelog](https://github.com/Hotragn/schemaport/blob/main/CHANGELOG.md). CLI
-commands, flags, exit codes, output formats, the JSON and SARIF report schemas,
-and the dataset's provenance fields are public interfaces once published.
+Semantic Versioning. While on `0.x`, breaking changes are written up in the
+[changelog](https://github.com/Hotragn/schemaport/blob/main/CHANGELOG.md).
+Commands, flags, exit codes, and the JSON and SARIF output formats are treated
+as public interfaces.
 
 ## Documentation
 
-- [Architecture](https://github.com/Hotragn/schemaport/blob/main/docs/architecture.md) — why it sits outside the execution path, and how checker and data are separated.
-- [Contract data](https://github.com/Hotragn/schemaport/blob/main/docs/contract-data.md) — confidence levels, provenance, and scoping rules.
-- [Agent integration](https://github.com/Hotragn/schemaport/blob/main/docs/agent-integration.md) — the preflight loop and the JSON findings contract.
-- [Shell example](https://github.com/Hotragn/schemaport/blob/main/examples/agent-preflight.md) — an orchestrator flow, end to end.
-- [Contributing](https://github.com/Hotragn/schemaport/blob/main/CONTRIBUTING.md) — local development, and the bar a contract record must clear.
+- [Architecture](https://github.com/Hotragn/schemaport/blob/main/docs/architecture.md) — why it stays out of your request path, and how the checker and the rules are kept separate.
+- [Contract data](https://github.com/Hotragn/schemaport/blob/main/docs/contract-data.md) — what a rule must prove before it ships.
+- [Agent integration](https://github.com/Hotragn/schemaport/blob/main/docs/agent-integration.md) — the check-fix-recheck loop, in detail.
+- [Shell example](https://github.com/Hotragn/schemaport/blob/main/examples/agent-preflight.md) — an end-to-end script.
+- [Contributing](https://github.com/Hotragn/schemaport/blob/main/CONTRIBUTING.md) — running it locally, and the bar for adding a rule.
 
 ## License
 

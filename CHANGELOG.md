@@ -9,9 +9,25 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While on
 
 Nothing yet.
 
-## 0.1.2 — 2026-08-16
+## 0.1.3 — 2026-08-16
 
-First release published to PyPI. 0.1.0 and 0.1.1 reached TestPyPI only.
+First release published to PyPI. 0.1.0 through 0.1.2 reached TestPyPI only.
+
+### Changed
+
+- Rewrote the README for a reader who has not already decided they need this.
+  It opened with the abstract positioning and left the reader to work out what
+  actually goes wrong; it now opens with the two failures the tool exists to
+  catch, in plain words, and reaches the terminology afterwards. Average
+  sentence length is down by about a third.
+- Reworded the package summary, which is the line that shows in PyPI search
+  results, to say what the tool does rather than what category it belongs to.
+
+## 0.1.2 — not published to PyPI
+
+Tagged, uploaded to TestPyPI, and verified there. Held at the PyPI approval
+gate while the README was rewritten, and superseded by 0.1.3 rather than
+promoted.
 
 ### Fixed
 
@@ -40,7 +56,7 @@ built from one commit while the smoke test validated another — the fix ships a
 
 Tagged and uploaded to TestPyPI, then withdrawn before promotion when the
 README problem above was found. The version was never published to PyPI and
-will not be. Everything below shipped as part of 0.1.2.
+will not be. Everything below shipped as part of 0.1.3.
 
 ### Added
 
